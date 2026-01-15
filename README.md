@@ -1,0 +1,2 @@
+# renzethub
+script auto summit
