@@ -81,4 +81,151 @@ local function createToggle(name, callback)
     btn.BackgroundColor3 = Color3.fromRGB(30, 45, 75)
     btn.Text = name .. ": OFF"
     btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.Font = Enum.Font.Gotham
+    btn.Font = Enum.Font.GothamSemibold
+    Instance.new("UICorner", btn)
+
+    local active = false
+    btn.MouseButton1Click:Connect(function()
+        active = not active
+        btn.Text = name .. (active and ": ON" or ": OFF")
+        btn.BackgroundColor3 = active and Color3.fromRGB(0, 180, 100) or Color3.fromRGB(30, 45, 75)
+        callback(active)
+    end)
+    return btn
+end
+
+-----------------------------------------------------------
+-- FITUR-FITUR
+-----------------------------------------------------------
+
+-- 1. Anti-Admin Jail & Anti-Bring
+createToggle("ANTI-ADMIN JAIL", function(val)
+    antiJailActive = val
+end)
+
+-- 2. Noclip
+createToggle("NOCLIP MODE", function(val)
+    noclipActive = val
+end)
+
+-- 3. Multi-Save Position System
+local SaveSection = Instance.new("Frame", Container)
+SaveSection.Size = UDim2.new(1, 0, 0, 80)
+SaveSection.BackgroundTransparency = 1
+
+local SaveBtn = Instance.new("TextButton", SaveSection)
+SaveBtn.Size = UDim2.new(1, 0, 0, 40)
+SaveBtn.Text = "ADD CURRENT POSITION"
+SaveBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+SaveBtn.TextColor3 = Color3.new(1, 1, 1)
+SaveBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", SaveBtn)
+
+local PosCount = Instance.new("TextLabel", SaveSection)
+PosCount.Size = UDim2.new(1, 0, 0, 30)
+PosCount.Position = UDim2.new(0, 0, 0, 45)
+PosCount.Text = "Saved Positions: 0"
+PosCount.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+PosCount.BackgroundTransparency = 1
+
+SaveBtn.MouseButton1Click:Connect(function()
+    if player.Character then
+        table.insert(savedCoords, player.Character.HumanoidRootPart.CFrame)
+        PosCount.Text = "Saved Positions: " .. #savedCoords
+    end
+end)
+
+-- 4. Auto Teleport (Smooth Tween)
+createToggle("START AUTO SUMMIT", function(val)
+    isAutoTP = val
+    while isAutoTP do
+        for _, cf in ipairs(savedCoords) do
+            if not isAutoTP then break end
+            local char = player.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local dist = (char.HumanoidRootPart.Position - cf.Position).Magnitude
+                local info = TweenInfo.new(dist/walkSpeed, Enum.EasingStyle.Linear)
+                local tw = TweenService:Create(char.HumanoidRootPart, info, {CFrame = cf})
+                tw:Play()
+                tw.Completed:Wait()
+            end
+            task.wait(1)
+        end
+        task.wait()
+    end
+end)
+
+-- 5. Record Walk System
+createToggle("RECORD WALK", function(val)
+    isRecording = val
+    if isRecording then recordedPath = {} end
+end)
+
+-- 6. Playback Walk
+createToggle("PLAY RECORDING", function(val)
+    isPlaying = val
+    if isPlaying and #recordedPath > 0 then
+        repeat
+            for _, cf in ipairs(recordedPath) do
+                if not isPlaying then break end
+                player.Character.HumanoidRootPart.CFrame = cf
+                task.wait()
+            end
+        until not isLooping or not isPlaying
+    end
+end)
+
+-- 7. Loop Playback
+createToggle("LOOP RECORDING", function(val)
+    isLooping = val
+end)
+
+-- 8. Clear Data
+local ClearBtn = Instance.new("TextButton", Container)
+ClearBtn.Size = UDim2.new(1, 0, 0, 40)
+ClearBtn.Text = "CLEAR ALL DATA"
+ClearBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+ClearBtn.TextColor3 = Color3.new(1, 1, 1)
+Instance.new("UICorner", ClearBtn)
+
+ClearBtn.MouseButton1Click:Connect(function()
+    recordedPath, savedCoords = {}, {}
+    PosCount.Text = "Saved Positions: 0"
+end)
+
+-----------------------------------------------------------
+-- SISTEM LOGIC (RUNSERVICE)
+-----------------------------------------------------------
+
+RunService.Stepped:Connect(function()
+    if player.Character then
+        -- Logic Noclip & Anti-Jail
+        if noclipActive or antiJailActive then
+            for _, part in pairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                    if antiJailActive and part.Anchored then
+                        part.Anchored = false
+                    end
+                end
+            end
+        end
+        
+        -- Logic Anti-Bring/Anti-Sit
+        if antiJailActive then
+            local hum = player.Character:FindFirstChild("Humanoid")
+            if hum then 
+                hum.Sit = false 
+                hum:ChangeState(Enum.HumanoidStateType.Physics)
+            end
+        end
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if isRecording and player.Character then
+        table.insert(recordedPath, player.Character.HumanoidRootPart.CFrame)
+    end
+end)
+
+print("Renzet Hubs Final Edition Loaded!")
